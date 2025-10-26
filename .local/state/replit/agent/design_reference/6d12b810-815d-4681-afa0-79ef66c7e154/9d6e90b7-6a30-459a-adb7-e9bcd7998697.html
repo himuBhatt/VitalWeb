@@ -1,0 +1,1259 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitalCare - Patient Monitoring System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    success: {
+                        DEFAULT: "var(--success)",
+                        foreground: "var(--success-foreground)",
+                    },
+                    warning: {
+                        DEFAULT: "var(--warning)",
+                        foreground: "var(--warning-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --radius: 8px;
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(222 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 84% 4.9%);
+            --primary: hsl(188 84% 36%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 16% 47%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222 84% 4.9%);
+            --success: hsl(142 76% 36%);
+            --success-foreground: hsl(356 29% 98%);
+            --warning: hsl(32 95% 44%);
+            --warning-foreground: hsl(356 29% 98%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(188 84% 36%);
+            --font-sans: 'Inter', system-ui, sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .vital-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .vital-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .notification-slide {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground">
+    <!-- @COMPONENT: AppContainer [main application container] -->
+    <div id="app" class="min-h-screen">
+        
+        <!-- Login Screen -->
+        <!-- @COMPONENT: LoginScreen [authentication interface] -->
+        <div id="loginScreen" class="min-h-screen bg-gradient-to-br from-primary/10 to-accent flex items-center justify-center p-4">
+            <div class="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+                        <i class="fas fa-heartbeat text-2xl text-primary-foreground"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-foreground">VitalCare</h1>
+                    <p class="text-muted-foreground">Patient Monitoring System</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Email</label>
+                        <input type="email" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="caregiver@hospital.com" data-mock="true">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Password</label>
+                        <input type="password" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="••••••••" data-mock="true">
+                    </div>
+                    <button onclick="showDashboard()" class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors font-medium" data-event="click:handleLogin" data-implementation="Should validate credentials and redirect to dashboard">
+                        Sign In
+                    </button>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-border">
+                    <p class="text-center text-sm text-muted-foreground">
+                        Don't have an account? 
+                        <button onclick="showSignup()" class="text-primary hover:underline" data-event="click:showSignup">Sign up</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Signup Screen -->
+        <!-- @COMPONENT: SignupScreen [registration interface] -->
+        <div id="signupScreen" class="min-h-screen bg-gradient-to-br from-primary/10 to-accent flex items-center justify-center p-4 hidden">
+            <div class="bg-card rounded-lg shadow-xl p-8 w-full max-w-md">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+                        <i class="fas fa-user-md text-2xl text-primary-foreground"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-foreground">Register Caregiver</h1>
+                    <p class="text-muted-foreground">Create your monitoring account</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Full Name</label>
+                        <input type="text" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Dr. Jane Smith" data-mock="true">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Email</label>
+                        <input type="email" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="caregiver@hospital.com" data-mock="true">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Hospital/Clinic</label>
+                        <input type="text" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="General Hospital" data-mock="true">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">License Number</label>
+                        <input type="text" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="MD123456" data-mock="true">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Password</label>
+                        <input type="password" class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" placeholder="••••••••" data-mock="true">
+                    </div>
+                    <button onclick="showDashboard()" class="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors font-medium" data-event="click:handleSignup" data-implementation="Should validate form and create account">
+                        Create Account
+                    </button>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-border">
+                    <p class="text-center text-sm text-muted-foreground">
+                        Already have an account? 
+                        <button onclick="showLogin()" class="text-primary hover:underline" data-event="click:showLogin">Sign in</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Dashboard -->
+        <!-- @COMPONENT: Dashboard [main monitoring interface] -->
+        <div id="dashboard" class="hidden min-h-screen bg-muted">
+            
+            <!-- Header -->
+            <!-- @COMPONENT: Header [top navigation and notifications] -->
+            <header class="bg-card border-b border-border shadow-sm">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-heartbeat text-2xl text-primary"></i>
+                            <h1 class="text-xl font-bold text-foreground">VitalCare</h1>
+                        </div>
+                        <div class="h-6 w-px bg-border"></div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-success rounded-full pulse-dot"></div>
+                            <span class="text-sm text-muted-foreground">System Online</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Notifications -->
+                        <div class="relative">
+                            <button class="relative p-2 text-muted-foreground hover:text-foreground transition-colors" onclick="toggleNotifications()" data-event="click:toggleNotifications">
+                                <i class="fas fa-bell text-lg"></i>
+                                <span class="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center" data-bind="notificationCount">3</span>
+                            </button>
+                            
+                            <!-- Notification Dropdown -->
+                            <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border z-50">
+                                <div class="p-4 border-b border-border">
+                                    <h3 class="font-semibold text-foreground">Alerts</h3>
+                                </div>
+                                <div class="max-h-96 overflow-y-auto">
+                                    <!-- @MAP: notifications.map(notification => ( -->
+                                    <div class="p-4 border-b border-border hover:bg-accent">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
+                                                <i class="fas fa-exclamation text-destructive-foreground text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-foreground">Critical Heart Rate</p>
+                                                <p class="text-xs text-muted-foreground">Patient John Doe - Room 204</p>
+                                                <p class="text-xs text-muted-foreground">2 minutes ago</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 border-b border-border hover:bg-accent">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-warning rounded-full flex items-center justify-center">
+                                                <i class="fas fa-exclamation-triangle text-warning-foreground text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-foreground">Low Blood Pressure</p>
+                                                <p class="text-xs text-muted-foreground">Patient Sarah Wilson - Room 103</p>
+                                                <p class="text-xs text-muted-foreground">5 minutes ago</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 border-b border-border hover:bg-accent">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                                <i class="fas fa-info text-primary-foreground text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-foreground">Device Connected</p>
+                                                <p class="text-xs text-muted-foreground">Monitor #3 - Room 201</p>
+                                                <p class="text-xs text-muted-foreground">1 hour ago</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- @END_MAP -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- User Menu -->
+                        <div class="flex items-center space-x-3">
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-foreground" data-bind="user.name">Dr. Jane Smith</p>
+                                <p class="text-xs text-muted-foreground" data-bind="user.hospital">General Hospital</p>
+                            </div>
+                            <button class="w-8 h-8 bg-primary rounded-full flex items-center justify-center" data-event="click:showUserMenu">
+                                <i class="fas fa-user text-primary-foreground text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content -->
+            <div class="flex">
+                
+                <!-- Sidebar -->
+                <!-- @COMPONENT: Sidebar [navigation menu] -->
+                <aside class="w-64 bg-card border-r border-border min-h-screen">
+                    <nav class="p-4 space-y-2">
+                        <button onclick="showTab('overview')" class="w-full flex items-center space-x-3 px-3 py-2 rounded-md bg-primary text-primary-foreground font-medium" data-event="click:navigateToOverview">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Overview</span>
+                        </button>
+                        <button onclick="showTab('patients')" class="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground" data-event="click:navigateToPatients">
+                            <i class="fas fa-users"></i>
+                            <span>Patients</span>
+                        </button>
+                        <button onclick="showTab('devices')" class="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground" data-event="click:navigateToDevices">
+                            <i class="fas fa-heartbeat"></i>
+                            <span>Devices</span>
+                        </button>
+                        <button onclick="showTab('alerts')" class="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground" data-event="click:navigateToAlerts">
+                            <i class="fas fa-bell"></i>
+                            <span>Alerts</span>
+                        </button>
+                        <button onclick="showTab('reports')" class="w-full flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground" data-event="click:navigateToReports">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Reports</span>
+                        </button>
+                    </nav>
+                </aside>
+                
+                <!-- Content Area -->
+                <main class="flex-1 p-6">
+                    
+                    <!-- Overview Tab -->
+                    <!-- @COMPONENT: OverviewTab [main monitoring dashboard] -->
+                    <div id="overviewTab" class="space-y-6">
+                        
+                        <!-- Quick Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <!-- @MAP: stats.map(stat => ( -->
+                            <div class="bg-card rounded-lg p-6 border border-border vital-card">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-muted-foreground text-sm">Active Patients</p>
+                                        <p class="text-2xl font-bold text-foreground" data-bind="stats.activePatients">24</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-users text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg p-6 border border-border vital-card">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-muted-foreground text-sm">Critical Alerts</p>
+                                        <p class="text-2xl font-bold text-destructive" data-bind="stats.criticalAlerts">3</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-triangle text-destructive"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg p-6 border border-border vital-card">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-muted-foreground text-sm">Connected Devices</p>
+                                        <p class="text-2xl font-bold text-success" data-bind="stats.connectedDevices">18</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-wifi text-success"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg p-6 border border-border vital-card">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-muted-foreground text-sm">Avg Response Time</p>
+                                        <p class="text-2xl font-bold text-foreground" data-bind="stats.responseTime">1.2<span class="text-sm text-muted-foreground ml-1">min</span></p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-clock text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP -->
+                        </div>
+                        
+                        <!-- Real-time Vitals Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            
+                            <!-- Patient Card 1 -->
+                            <!-- @MAP: patients.map(patient => ( -->
+                            <div class="bg-card rounded-lg border border-border vital-card">
+                                <div class="p-4 border-b border-border">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="patient.name">John Doe</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="patient.room">Room 204 • Age 45</p>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-2 h-2 bg-destructive rounded-full pulse-dot"></div>
+                                            <span class="text-xs text-destructive font-medium">CRITICAL</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-heartbeat text-destructive"></i>
+                                            <span class="text-sm text-foreground">Heart Rate</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-destructive" data-bind="patient.heartRate">145 BPM</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-tint text-primary"></i>
+                                            <span class="text-sm text-foreground">Blood Pressure</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-foreground" data-bind="patient.bloodPressure">120/80</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-thermometer-half text-warning"></i>
+                                            <span class="text-sm text-foreground">Temperature</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-foreground" data-bind="patient.temperature">98.6°F</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-lungs text-primary"></i>
+                                            <span class="text-sm text-foreground">SpO2</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-foreground" data-bind="patient.spo2">98%</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-muted">
+                                    <canvas id="chart1" class="w-full h-20" data-implementation="Real-time heart rate chart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Patient Card 2 -->
+                            <div class="bg-card rounded-lg border border-border vital-card">
+                                <div class="p-4 border-b border-border">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="patient.name">Sarah Wilson</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="patient.room">Room 103 • Age 32</p>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-2 h-2 bg-warning rounded-full pulse-dot"></div>
+                                            <span class="text-xs text-warning font-medium">WATCH</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-heartbeat text-success"></i>
+                                            <span class="text-sm text-foreground">Heart Rate</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.heartRate">72 BPM</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-tint text-warning"></i>
+                                            <span class="text-sm text-foreground">Blood Pressure</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-warning" data-bind="patient.bloodPressure">90/60</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-thermometer-half text-success"></i>
+                                            <span class="text-sm text-foreground">Temperature</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.temperature">98.2°F</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-lungs text-success"></i>
+                                            <span class="text-sm text-foreground">SpO2</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.spo2">99%</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-muted">
+                                    <canvas id="chart2" class="w-full h-20" data-implementation="Real-time heart rate chart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Patient Card 3 -->
+                            <div class="bg-card rounded-lg border border-border vital-card">
+                                <div class="p-4 border-b border-border">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="patient.name">Michael Chen</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="patient.room">Room 201 • Age 67</p>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-2 h-2 bg-success rounded-full pulse-dot"></div>
+                                            <span class="text-xs text-success font-medium">STABLE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-heartbeat text-success"></i>
+                                            <span class="text-sm text-foreground">Heart Rate</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.heartRate">68 BPM</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-tint text-success"></i>
+                                            <span class="text-sm text-foreground">Blood Pressure</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.bloodPressure">118/75</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-thermometer-half text-success"></i>
+                                            <span class="text-sm text-foreground">Temperature</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.temperature">98.4°F</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-lungs text-success"></i>
+                                            <span class="text-sm text-foreground">SpO2</span>
+                                        </div>
+                                        <span class="text-lg font-bold text-success" data-bind="patient.spo2">97%</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-muted">
+                                    <canvas id="chart3" class="w-full h-20" data-implementation="Real-time heart rate chart"></canvas>
+                                </div>
+                            </div>
+                            <!-- @END_MAP -->
+                        </div>
+                        
+                        <!-- Recent Activity -->
+                        <div class="bg-card rounded-lg border border-border">
+                            <div class="p-4 border-b border-border">
+                                <h3 class="font-semibold text-foreground">Recent Activity</h3>
+                            </div>
+                            <div class="p-4">
+                                <div class="space-y-4">
+                                    <!-- @MAP: activities.map(activity => ( -->
+                                    <div class="flex items-start space-x-3">
+                                        <div class="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
+                                            <i class="fas fa-exclamation text-destructive-foreground text-sm"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-foreground">Critical heart rate alert for John Doe (Room 204)</p>
+                                            <p class="text-xs text-muted-foreground">2 minutes ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start space-x-3">
+                                        <div class="w-8 h-8 bg-warning rounded-full flex items-center justify-center">
+                                            <i class="fas fa-exclamation-triangle text-warning-foreground text-sm"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-foreground">Low blood pressure detected for Sarah Wilson (Room 103)</p>
+                                            <p class="text-xs text-muted-foreground">5 minutes ago</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start space-x-3">
+                                        <div class="w-8 h-8 bg-success rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-success-foreground text-sm"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-foreground">All vitals normalized for Michael Chen (Room 201)</p>
+                                            <p class="text-xs text-muted-foreground">15 minutes ago</p>
+                                        </div>
+                                    </div>
+                                    <!-- @END_MAP -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Patients Tab -->
+                    <!-- @COMPONENT: PatientsTab [patient management interface] -->
+                    <div id="patientsTab" class="hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold text-foreground">Patient Management</h2>
+                            <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors" data-event="click:addPatient" data-implementation="Should open add patient modal">
+                                <i class="fas fa-plus mr-2"></i>Add Patient
+                            </button>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border">
+                            <div class="p-4 border-b border-border">
+                                <div class="flex items-center space-x-4">
+                                    <input type="text" placeholder="Search patients..." class="flex-1 px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                    <select class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                        <option>All Statuses</option>
+                                        <option>Critical</option>
+                                        <option>Stable</option>
+                                        <option>Watch</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-muted">
+                                        <tr>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Patient</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Room</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Status</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Heart Rate</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Blood Pressure</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Last Update</th>
+                                            <th class="text-left p-4 font-medium text-muted-foreground">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- @MAP: patients.map(patient => ( -->
+                                        <tr class="border-b border-border hover:bg-accent">
+                                            <td class="p-4">
+                                                <div>
+                                                    <p class="font-medium text-foreground" data-bind="patient.name">John Doe</p>
+                                                    <p class="text-sm text-muted-foreground" data-bind="patient.details">Age 45 • Male</p>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.room">204</td>
+                                            <td class="p-4">
+                                                <span class="px-2 py-1 bg-destructive text-destructive-foreground text-xs rounded-full" data-bind="patient.status">Critical</span>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.heartRate">145 BPM</td>
+                                            <td class="p-4 text-foreground" data-bind="patient.bloodPressure">120/80</td>
+                                            <td class="p-4 text-muted-foreground" data-bind="patient.lastUpdate">2 min ago</td>
+                                            <td class="p-4">
+                                                <button class="text-primary hover:text-primary/80 mr-2" data-event="click:viewPatient" data-implementation="Should open patient details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="text-muted-foreground hover:text-foreground" data-event="click:editPatient" data-implementation="Should open edit patient modal">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b border-border hover:bg-accent">
+                                            <td class="p-4">
+                                                <div>
+                                                    <p class="font-medium text-foreground" data-bind="patient.name">Sarah Wilson</p>
+                                                    <p class="text-sm text-muted-foreground" data-bind="patient.details">Age 32 • Female</p>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.room">103</td>
+                                            <td class="p-4">
+                                                <span class="px-2 py-1 bg-warning text-warning-foreground text-xs rounded-full" data-bind="patient.status">Watch</span>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.heartRate">72 BPM</td>
+                                            <td class="p-4 text-foreground" data-bind="patient.bloodPressure">90/60</td>
+                                            <td class="p-4 text-muted-foreground" data-bind="patient.lastUpdate">5 min ago</td>
+                                            <td class="p-4">
+                                                <button class="text-primary hover:text-primary/80 mr-2" data-event="click:viewPatient">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="text-muted-foreground hover:text-foreground" data-event="click:editPatient">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b border-border hover:bg-accent">
+                                            <td class="p-4">
+                                                <div>
+                                                    <p class="font-medium text-foreground" data-bind="patient.name">Michael Chen</p>
+                                                    <p class="text-sm text-muted-foreground" data-bind="patient.details">Age 67 • Male</p>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.room">201</td>
+                                            <td class="p-4">
+                                                <span class="px-2 py-1 bg-success text-success-foreground text-xs rounded-full" data-bind="patient.status">Stable</span>
+                                            </td>
+                                            <td class="p-4 text-foreground" data-bind="patient.heartRate">68 BPM</td>
+                                            <td class="p-4 text-foreground" data-bind="patient.bloodPressure">118/75</td>
+                                            <td class="p-4 text-muted-foreground" data-bind="patient.lastUpdate">1 min ago</td>
+                                            <td class="p-4">
+                                                <button class="text-primary hover:text-primary/80 mr-2" data-event="click:viewPatient">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="text-muted-foreground hover:text-foreground" data-event="click:editPatient">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <!-- @END_MAP -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Devices Tab -->
+                    <!-- @COMPONENT: DevicesTab [device management interface] -->
+                    <div id="devicesTab" class="hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold text-foreground">Device Management</h2>
+                            <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors" data-event="click:connectDevice" data-implementation="Should open device connection interface">
+                                <i class="fas fa-plus mr-2"></i>Connect Device
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- @MAP: devices.map(device => ( -->
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-heartbeat text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="device.name">Monitor #1</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="device.model">CardioMax Pro</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-2 h-2 bg-success rounded-full pulse-dot"></div>
+                                        <span class="text-xs text-success font-medium">ONLINE</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Room</span>
+                                        <span class="text-sm text-foreground" data-bind="device.room">204</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Patient</span>
+                                        <span class="text-sm text-foreground" data-bind="device.patient">John Doe</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Battery</span>
+                                        <span class="text-sm text-foreground" data-bind="device.battery">87%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Signal</span>
+                                        <span class="text-sm text-success" data-bind="device.signal">Strong</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 pt-4 border-t border-border">
+                                    <div class="flex space-x-2">
+                                        <button class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded text-sm hover:bg-primary/90 transition-colors" data-event="click:configureDevice">
+                                            Configure
+                                        </button>
+                                        <button class="flex-1 bg-muted text-muted-foreground py-2 px-3 rounded text-sm hover:bg-accent hover:text-accent-foreground transition-colors" data-event="click:testDevice">
+                                            Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-heartbeat text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="device.name">Monitor #2</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="device.model">VitalSense Elite</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-2 h-2 bg-success rounded-full pulse-dot"></div>
+                                        <span class="text-xs text-success font-medium">ONLINE</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Room</span>
+                                        <span class="text-sm text-foreground" data-bind="device.room">103</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Patient</span>
+                                        <span class="text-sm text-foreground" data-bind="device.patient">Sarah Wilson</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Battery</span>
+                                        <span class="text-sm text-foreground" data-bind="device.battery">92%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Signal</span>
+                                        <span class="text-sm text-success" data-bind="device.signal">Strong</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 pt-4 border-t border-border">
+                                    <div class="flex space-x-2">
+                                        <button class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded text-sm hover:bg-primary/90 transition-colors" data-event="click:configureDevice">
+                                            Configure
+                                        </button>
+                                        <button class="flex-1 bg-muted text-muted-foreground py-2 px-3 rounded text-sm hover:bg-accent hover:text-accent-foreground transition-colors" data-event="click:testDevice">
+                                            Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-warning/10 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-heartbeat text-warning"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-foreground" data-bind="device.name">Monitor #3</h3>
+                                            <p class="text-sm text-muted-foreground" data-bind="device.model">CardioMax Pro</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-2 h-2 bg-warning rounded-full pulse-dot"></div>
+                                        <span class="text-xs text-warning font-medium">LOW BATTERY</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Room</span>
+                                        <span class="text-sm text-foreground" data-bind="device.room">201</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Patient</span>
+                                        <span class="text-sm text-foreground" data-bind="device.patient">Michael Chen</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Battery</span>
+                                        <span class="text-sm text-warning" data-bind="device.battery">15%</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-muted-foreground">Signal</span>
+                                        <span class="text-sm text-success" data-bind="device.signal">Strong</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 pt-4 border-t border-border">
+                                    <div class="flex space-x-2">
+                                        <button class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded text-sm hover:bg-primary/90 transition-colors" data-event="click:configureDevice">
+                                            Configure
+                                        </button>
+                                        <button class="flex-1 bg-muted text-muted-foreground py-2 px-3 rounded text-sm hover:bg-accent hover:text-accent-foreground transition-colors" data-event="click:testDevice">
+                                            Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP -->
+                        </div>
+                    </div>
+                    
+                    <!-- Alerts Tab -->
+                    <!-- @COMPONENT: AlertsTab [alert management interface] -->
+                    <div id="alertsTab" class="hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold text-foreground">Alert Management</h2>
+                            <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors" data-event="click:configureAlerts" data-implementation="Should open alert configuration">
+                                <i class="fas fa-cog mr-2"></i>Configure Alerts
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-semibold text-foreground">Active Alerts</h3>
+                                    <span class="bg-destructive text-destructive-foreground px-2 py-1 rounded-full text-sm" data-bind="alerts.active">3</span>
+                                </div>
+                                <div class="text-2xl font-bold text-destructive" data-bind="alerts.activeCount">Critical: 2</div>
+                                <div class="text-sm text-warning" data-bind="alerts.warningCount">Warning: 1</div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-semibold text-foreground">Today's Alerts</h3>
+                                    <span class="bg-muted text-muted-foreground px-2 py-1 rounded-full text-sm" data-bind="alerts.today">12</span>
+                                </div>
+                                <div class="text-2xl font-bold text-foreground" data-bind="alerts.todayCount">12</div>
+                                <div class="text-sm text-muted-foreground">vs 8 yesterday</div>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-semibold text-foreground">Response Time</h3>
+                                    <span class="bg-success text-success-foreground px-2 py-1 rounded-full text-sm">Good</span>
+                                </div>
+                                <div class="text-2xl font-bold text-foreground" data-bind="alerts.responseTime">1.2</div>
+                                <div class="text-sm text-muted-foreground">minutes average</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border">
+                            <div class="p-4 border-b border-border">
+                                <h3 class="font-semibold text-foreground">Recent Alerts</h3>
+                            </div>
+                            <div class="divide-y divide-border">
+                                <!-- @MAP: alerts.map(alert => ( -->
+                                <div class="p-4 hover:bg-accent">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
+                                                <i class="fas fa-exclamation text-destructive-foreground text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-foreground" data-bind="alert.title">Critical Heart Rate Alert</p>
+                                                <p class="text-sm text-muted-foreground" data-bind="alert.description">Patient John Doe (Room 204) - Heart rate: 145 BPM</p>
+                                                <p class="text-xs text-muted-foreground" data-bind="alert.time">2 minutes ago</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="text-primary hover:text-primary/80" data-event="click:acknowledgeAlert" data-implementation="Should acknowledge alert">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="text-muted-foreground hover:text-foreground" data-event="click:dismissAlert" data-implementation="Should dismiss alert">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="p-4 hover:bg-accent">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-warning rounded-full flex items-center justify-center">
+                                                <i class="fas fa-exclamation-triangle text-warning-foreground text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-foreground" data-bind="alert.title">Low Blood Pressure</p>
+                                                <p class="text-sm text-muted-foreground" data-bind="alert.description">Patient Sarah Wilson (Room 103) - BP: 90/60 mmHg</p>
+                                                <p class="text-xs text-muted-foreground" data-bind="alert.time">5 minutes ago</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="text-primary hover:text-primary/80" data-event="click:acknowledgeAlert">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="text-muted-foreground hover:text-foreground" data-event="click:dismissAlert">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="p-4 hover:bg-accent">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="w-8 h-8 bg-success rounded-full flex items-center justify-center">
+                                                <i class="fas fa-info text-success-foreground text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-foreground" data-bind="alert.title">Device Connected</p>
+                                                <p class="text-sm text-muted-foreground" data-bind="alert.description">Monitor #3 (Room 201) successfully connected</p>
+                                                <p class="text-xs text-muted-foreground" data-bind="alert.time">1 hour ago</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="text-primary hover:text-primary/80" data-event="click:acknowledgeAlert">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="text-muted-foreground hover:text-foreground" data-event="click:dismissAlert">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reports Tab -->
+                    <!-- @COMPONENT: ReportsTab [reporting interface] -->
+                    <div id="reportsTab" class="hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold text-foreground">Reports & Analytics</h2>
+                            <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors" data-event="click:exportData" data-implementation="Should export vital data">
+                                <i class="fas fa-download mr-2"></i>Export Data
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <h3 class="font-semibold text-foreground mb-4">Weekly Alert Trends</h3>
+                                <canvas id="weeklyChart" class="w-full h-64" data-implementation="Weekly alert trends chart"></canvas>
+                            </div>
+                            
+                            <div class="bg-card rounded-lg border border-border p-6">
+                                <h3 class="font-semibold text-foreground mb-4">Patient Status Distribution</h3>
+                                <canvas id="statusChart" class="w-full h-64" data-implementation="Patient status pie chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border">
+                            <div class="p-4 border-b border-border">
+                                <h3 class="font-semibold text-foreground">Patient History</h3>
+                            </div>
+                            <div class="p-4">
+                                <div class="flex space-x-4 mb-4">
+                                    <select class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                        <option>All Patients</option>
+                                        <option>John Doe</option>
+                                        <option>Sarah Wilson</option>
+                                        <option>Michael Chen</option>
+                                    </select>
+                                    <input type="date" class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                    <input type="date" class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors" data-event="click:generateReport">
+                                        Generate Report
+                                    </button>
+                                </div>
+                                
+                                <div class="bg-muted rounded-lg p-6 text-center">
+                                    <i class="fas fa-chart-line text-4xl text-muted-foreground mb-4"></i>
+                                    <p class="text-muted-foreground">Select patient and date range to generate detailed reports</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </main>
+            </div>
+        </div>
+        
+        <!-- Critical Alert Modal -->
+        <!-- @COMPONENT: CriticalAlertModal [emergency alert overlay] -->
+        <div id="criticalAlertModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+            <div class="bg-card rounded-lg shadow-xl p-6 w-full max-w-md notification-slide">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-12 h-12 bg-destructive rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation text-destructive-foreground text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-destructive">CRITICAL ALERT</h3>
+                        <p class="text-sm text-muted-foreground">Immediate attention required</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="font-medium text-foreground" data-bind="alert.message">Patient John Doe (Room 204) has abnormal heart rate</p>
+                    <p class="text-sm text-muted-foreground" data-bind="alert.details">Current: 145 BPM (Normal: 60-100 BPM)</p>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button onclick="closeCriticalAlert()" class="flex-1 bg-destructive text-destructive-foreground py-2 rounded-md hover:bg-destructive/90 transition-colors font-medium" data-event="click:acknowledgeAlert">
+                        Acknowledge
+                    </button>
+                    <button onclick="closeCriticalAlert()" class="flex-1 bg-muted text-muted-foreground py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors" data-event="click:viewPatient">
+                        View Patient
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <!-- @END_COMPONENT: AppContainer -->
+    
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        
+        (function() {
+            // Application state
+            let currentScreen = 'login';
+            let currentTab = 'overview';
+            
+            // Mock data generation for charts
+            function generateHeartRateData() {
+                const data = [];
+                const now = Date.now();
+                for (let i = 20; i >= 0; i--) {
+                    data.push({
+                        x: now - (i * 1000 * 60), // Last 20 minutes
+                        y: 65 + Math.random() * 20 + Math.sin(i * 0.1) * 10
+                    });
+                }
+                return data;
+            }
+            
+            // Initialize charts
+            function initializeCharts() {
+                // Patient heart rate charts
+                const chartOptions = {
+                    type: 'line',
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        },
+                        elements: {
+                            point: { radius: 0 }
+                        }
+                    }
+                };
+                
+                // Initialize patient charts
+                ['chart1', 'chart2', 'chart3'].forEach((chartId, index) => {
+                    const canvas = document.getElementById(chartId);
+                    if (canvas) {
+                        new Chart(canvas, {
+                            ...chartOptions,
+                            data: {
+                                datasets: [{
+                                    data: generateHeartRateData(),
+                                    borderColor: index === 0 ? '#dc2626' : '#059669',
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2,
+                                    tension: 0.4
+                                }]
+                            }
+                        });
+                    }
+                });
+                
+                // Weekly trends chart
+                const weeklyCanvas = document.getElementById('weeklyChart');
+                if (weeklyCanvas) {
+                    new Chart(weeklyCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            datasets: [{
+                                label: 'Critical',
+                                data: [2, 1, 3, 2, 4, 1, 2],
+                                backgroundColor: '#dc2626'
+                            }, {
+                                label: 'Warning',
+                                data: [5, 3, 6, 4, 7, 3, 5],
+                                backgroundColor: '#d97706'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+                
+                // Status distribution chart
+                const statusCanvas = document.getElementById('statusChart');
+                if (statusCanvas) {
+                    new Chart(statusCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Stable', 'Watch', 'Critical'],
+                            datasets: [{
+                                data: [18, 3, 3],
+                                backgroundColor: ['#059669', '#d97706', '#dc2626']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+            }
+            
+            // Screen navigation functions
+            window.showLogin = function() {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('signupScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                currentScreen = 'login';
+            };
+            
+            window.showSignup = function() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('signupScreen').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                currentScreen = 'signup';
+            };
+            
+            window.showDashboard = function() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('signupScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                currentScreen = 'dashboard';
+                
+                // Initialize charts when dashboard is shown
+                setTimeout(initializeCharts, 100);
+                
+                // Simulate critical alert after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('criticalAlertModal').classList.remove('hidden');
+                }, 3000);
+            };
+            
+            // Tab navigation
+            window.showTab = function(tabName) {
+                // Hide all tabs
+                ['overviewTab', 'patientsTab', 'devicesTab', 'alertsTab', 'reportsTab'].forEach(tab => {
+                    document.getElementById(tab).classList.add('hidden');
+                });
+                
+                // Show selected tab
+                document.getElementById(tabName + 'Tab').classList.remove('hidden');
+                currentTab = tabName;
+                
+                // Update navigation styles
+                document.querySelectorAll('aside button').forEach(btn => {
+                    btn.className = btn.className.replace('bg-primary text-primary-foreground', 'text-muted-foreground hover:bg-accent hover:text-accent-foreground');
+                });
+                
+                event.target.className = 'w-full flex items-center space-x-3 px-3 py-2 rounded-md bg-primary text-primary-foreground font-medium';
+            };
+            
+            // Notification toggle
+            window.toggleNotifications = function() {
+                const dropdown = document.getElementById('notificationDropdown');
+                dropdown.classList.toggle('hidden');
+            };
+            
+            // Close critical alert
+            window.closeCriticalAlert = function() {
+                document.getElementById('criticalAlertModal').classList.add('hidden');
+            };
+            
+            // Real-time data simulation
+            function simulateRealTimeUpdates() {
+                // This would be replaced with actual real-time data from devices
+                setInterval(() => {
+                    // Update vital signs with small random variations
+                    // In a real implementation, this would come from WebSocket connections
+                    console.log('Simulating real-time vital sign updates...');
+                }, 5000);
+            }
+            
+            // Initialize app
+            function init() {
+                // Start real-time simulation
+                simulateRealTimeUpdates();
+                
+                // Close notification dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    const dropdown = document.getElementById('notificationDropdown');
+                    const button = e.target.closest('[onclick="toggleNotifications()"]');
+                    if (!button && !dropdown.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Start the application
+            init();
+            
+        })();
+    </script>
+</body>
+</html>
