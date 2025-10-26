@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Local tsconfig schema (minimal)",
+  "type": "object",
+  "properties": {
+    "compilerOptions": { "type": "object" },
+    "include": { "type": ["array", "string"] },
+    "exclude": { "type": ["array", "string"] }
+  },
+  "additionalProperties": true
+}
