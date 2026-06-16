@@ -12,7 +12,13 @@ type Command = {
   action: (matches: RegExpMatchArray | null) => void | Promise<void>;
 };
 
-export default function VoiceAssistant() {
+interface VoiceAssistantProps {
+  autoStart?: boolean;
+  hideUI?: boolean;
+  greetOnMount?: boolean;
+}
+
+export default function VoiceAssistant(props: VoiceAssistantProps) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const [transcript, setTranscript] = useState('');
@@ -20,6 +26,7 @@ export default function VoiceAssistant() {
   const [pendingAction, setPendingAction] = useState<null | { kind: 'navigate' | 'reports' | 'patient'; label: string; path?: string }>(null);
   const [pendingClarify, setPendingClarify] = useState<null | { label: string; options: { key: string; path: string }[] }>(null);
   const recognitionRef = useRef<any>(null);
+  const landingAttemptRef = useRef<number>(0);
   // refs to avoid stale closures inside recognition handler
   const pendingActionRef = useRef<typeof pendingAction>(null);
   const pendingClarifyRef = useRef<typeof pendingClarify>(null);
@@ -31,11 +38,14 @@ export default function VoiceAssistant() {
   // persist/select voice language (en = English, hi = Hindi)
   const [voiceLang, setVoiceLang] = useState<'en' | 'hi' | null>(() => {
     try {
-      const v = localStorage.getItem('vital_voice_lang');
+      const v = sessionStorage.getItem('vital_voice_lang');
       return v === 'hi' ? 'hi' : v === 'en' ? 'en' : null;
     } catch { return null; }
   });
   const [showLangPrompt, setShowLangPrompt] = useState(false);
+  const [landingNavMode, setLandingNavMode] = useState(false);
+  const landingNavRef = useRef<boolean>(false);
+  useEffect(() => { landingNavRef.current = landingNavMode; }, [landingNavMode]);
 
   // simple localizer: pass English and Hindi strings
   const t = (en: string, hi: string) => (voiceLang === 'hi' ? hi : en);
@@ -341,20 +351,95 @@ export default function VoiceAssistant() {
 
   // helper to pick and persist language
   const selectLanguage = (lang: 'en' | 'hi') => {
-    try { localStorage.setItem('vital_voice_lang', lang); } catch {}
+    try { sessionStorage.setItem('vital_voice_lang', lang); } catch {}
     setVoiceLang(lang);
     setShowLangPrompt(false);
-    // update recognition immediately
-    try { if (recognitionRef.current) recognitionRef.current.lang = lang === 'hi' ? 'hi-IN' : 'en-US'; } catch {}
-    // confirm in chosen language immediately (use lang override so TTS uses correct voice even before state update)
-    if (lang === 'hi') speak('अब मैं हिंदी में बोलूँगा', 'hi'); else speak('Voice set to English', 'en');
+    
+    // Stop current recognition instance
+    stopListening();
+    
+    // Dispatch custom event for landing page
+    window.dispatchEvent(new CustomEvent('vitalVoice:languageSelected', { detail: { lang } }));
+    window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+    
+    // Update recognition language and create new instance if needed
+    try {
+      if (recognitionRef.current) {
+        const newLang = lang === 'hi' ? 'hi-IN' : 'en-US';
+        recognitionRef.current.lang = newLang;
+        // Force recreation of recognition instance with new language
+        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+        if (SpeechRecognition) {
+          const newRecognition = new SpeechRecognition();
+          newRecognition.interimResults = false;
+          newRecognition.lang = newLang;
+          newRecognition.maxAlternatives = 1;
+          // Copy over existing handlers
+          newRecognition.onresult = recognitionRef.current.onresult;
+          newRecognition.onerror = recognitionRef.current.onerror;
+          newRecognition.onend = recognitionRef.current.onend;
+          newRecognition.onstart = recognitionRef.current.onstart;
+          recognitionRef.current = newRecognition;
+        }
+      }
+    } catch (e) { 
+      console.error('Error updating recognition language:', e);
+    }
+    
+    // Short delay then confirm and give instructions in chosen language
+    setTimeout(() => {
+      if (lang === 'hi') {
+        speak('ठीक है, अब मैं हिंदी में बात करूंगा। लॉगिन के लिए डॉक्टर लॉगिन या मरीज़ लॉगिन बोलिए', 'hi');
+      } else {
+        speak('Language set to English. Please say Doctor or Patient to login', 'en');
+      }
+
+      // Short delay before entering navigation mode to allow TTS to complete
+      setTimeout(() => {
+        try { enterLandingNavMode(); } catch (e) { console.error('Error entering landing nav mode:', e); }
+      }, 2500);
+    }, 100);
+  };
+  
+  // After selecting language on landing, enter a short mode to listen for navigation commands
+  // (user can say 'Doctor' or 'Patient' to go to respective login pages)
+  const enterLandingNavMode = () => {
+    try {
+      if (typeof location === 'string' && (location === '/' || location === '' || location.includes('landing'))) {
+        setLandingNavMode(true);
+        
+        // Start listening immediately since we already gave instructions
+        try {
+          if (recognitionRef.current) {
+            // Ensure recognition is using correct language
+            recognitionRef.current.lang = voiceLang === 'hi' ? 'hi-IN' : 'en-US';
+            startListening();
+            window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+          }
+        } catch (e) {
+          console.error('Error starting landing recognition:', e);
+          // If recognition fails, speak error in correct language
+          if (voiceLang === 'hi') {
+            speak('माफ़ कीजिये, कुछ तकनीकी समस्या है। कृपया बटन का उपयोग करें।', 'hi');
+          } else {
+            speak('Sorry, there was a technical issue. Please use the buttons.', 'en');
+          }
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+        }
+      }
+    } catch (e) {
+      console.error('Error entering landing nav mode:', e);
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+    }
   };
 
   // allow user to clear or reopen language chooser at any time
   const clearLanguage = () => {
-    try { localStorage.removeItem('vital_voice_lang'); } catch {}
+    try { sessionStorage.removeItem('vital_voice_lang'); } catch {}
     setVoiceLang(null);
     setShowLangPrompt(true); // open chooser so user can pick again
+    // Dispatch event for landing page
+    window.dispatchEvent(new CustomEvent('vitalVoice:languageSelected', { detail: { lang: null } }));
     say('Language cleared. Please select a language.', 'भाषा हटा दी गई है। कृपया एक भाषा चुनें।');
   };
 
@@ -633,12 +718,90 @@ export default function VoiceAssistant() {
     { phrase: /stop listening|stop|रुको|बंद करो|बंद/i, description: 'Stop listening', action: () => { stopListening(); say('Stopped listening.', 'सुनना बंद कर दिया गया।'); } }
   ];
 
+  // Handle automatic greeting and language selection on mount
+  useEffect(() => {
+    if (props.greetOnMount && !voiceLang) {
+      let alive = true;
+
+      // Try to start listening but wait until recognitionRef is ready (poll with retries)
+      const startListeningWhenReady = (attempt = 0, langOverride?: string) => {
+        if (!alive) return;
+        // If recognition is ready, start and notify landing UI
+        if (recognitionRef.current) {
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+          try { startListening(langOverride); } catch (e) { /* ignore */ }
+          return;
+        }
+        // Give up after several attempts and signal fallback
+        if (attempt >= 8) {
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+          return;
+        }
+        // Retry in a short while
+        setTimeout(() => startListeningWhenReady(attempt + 1, langOverride), 300);
+      };
+
+      // Small delay to allow voices to load and then speak the greeting in English then Hindi
+      setTimeout(() => {
+        try {
+          const enUt = new SpeechSynthesisUtterance("Welcome to VitalCare. Please select your language by saying 'English'.");
+          enUt.lang = 'en-US';
+          const hiUt = new SpeechSynthesisUtterance("VitalCare में आपका स्वागत है। कृपया 'हिंदी' कहकर भाषा चुनें।");
+          hiUt.lang = 'hi-IN';
+
+          enUt.onend = () => {
+            try { window.speechSynthesis.speak(hiUt); } catch (e) { /* ignore */ }
+          };
+          enUt.onerror = () => {
+            // If english utterance fails, still try hindi after a short delay
+            setTimeout(() => { try { window.speechSynthesis.speak(hiUt); } catch (e) {} }, 200);
+          };
+
+          hiUt.onend = () => {
+            if (props.autoStart) startListeningWhenReady(0, 'hi-IN');
+          };
+          hiUt.onerror = () => {
+            if (props.autoStart) setTimeout(() => startListeningWhenReady(0, 'hi-IN'), 600);
+          };
+
+          window.speechSynthesis.speak(enUt);
+        } catch (e) {
+          // If speech synthesis throws, fallback to starting recognition attempts
+          if (props.autoStart) setTimeout(() => startListeningWhenReady(0, 'hi-IN'), 300);
+        }
+      }, 500);
+
+      return () => { alive = false; };
+    }
+  }, [props.greetOnMount, voiceLang]);
+
+  // Listen for voice language commands (more permissive)
+  const handleLanguageCommand = (text: string) => {
+    const lowerText = String(text || '').toLowerCase();
+    // English variants
+    if (/\benglish\b|select english|use english|i want english|speak english/i.test(lowerText)) {
+      selectLanguage('en');
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+      return true;
+    }
+    // Hindi variants (Devanagari or latin transliteration)
+    if (/\bहिंदी\b|हिन्दी|हिंदी|\bhindi\b|select hindi|use hindi/i.test(lowerText)) {
+      selectLanguage('hi');
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+      return true;
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     if (!SpeechRecognition) { setSupported(false); return; }
     const r = new SpeechRecognition(); r.interimResults = false; r.lang = voiceLang === 'hi' ? 'hi-IN' : 'en-US'; r.maxAlternatives = 1;
-    r.onresult = async (ev:any) => {
-      const text = ev.results[0][0].transcript; setTranscript(text);
+  r.onresult = async (ev:any) => {
+      const text = ev.results[0][0].transcript;
+      setTranscript(text);
+      window.dispatchEvent(new CustomEvent('vitalVoice:transcript', { detail: { transcript: text } }));
 
       // If we're waiting for a confirmation
       const pa = pendingActionRef.current;
@@ -728,6 +891,60 @@ export default function VoiceAssistant() {
         console.warn('[VoiceAssistant] doctor override guard error', e);
       }
 
+      // First check for language selection if we're on landing
+      if (!voiceLang) {
+        window.dispatchEvent(new CustomEvent('vitalVoice:transcript', { detail: { transcript: text } }));
+        const languageSelected = handleLanguageCommand(text);
+        if (languageSelected) {
+          return;
+        }
+      }
+
+      // If we're in landing navigation mode (after language selection), handle quick nav commands
+      if (landingNavRef.current && voiceLang) {
+        const lower = text.toLowerCase();
+        // Doctor commands (English and Hindi)
+        if (/(?:\bdoctor\b|\bdoc\b|doctor login|doc-login|डॉक्टर|डॉक्टर लॉगिन|डॉक्टरलॉगिन|डॉक्टर लॉग-इन)/i.test(lower)) {
+          say('Opening doctor login', 'डॉक्टर लॉगिन खोल रहा हूँ');
+          try { navigate('/doc-login'); } catch (e) {}
+          setLandingNavMode(false);
+          stopListening();
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+          return;
+        }
+        // Patient commands (English and Hindi)
+        if (/(?:\bpatient\b|patient login|patient-login|patient login|मरीज|रोगी|रोगी लॉगिन|पेशेंट)/i.test(lower)) {
+          say('Opening patient login', 'मरीज लॉगिन खोल रहा हूँ');
+          try { navigate('/patient-login'); } catch (e) {}
+          setLandingNavMode(false);
+          stopListening();
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+          return;
+        }
+        // Not recognized - prompt again and keep listening
+        const promptAgain = () => {
+          if (voiceLang === 'hi') {
+            speak('मैं समझ नहीं पाया। कृपया "डॉक्टर लॉगिन" या "मरीज लॉगिन" कहें', 'hi');
+          } else {
+            speak('Sorry, please say "Doctor login" or "Patient login"', 'en');
+          }
+          // Restart recognition after prompt
+          setTimeout(() => {
+            try {
+              if (recognitionRef.current) {
+                recognitionRef.current.start();
+                setListening(true);
+                window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+              }
+            } catch (e) {
+              console.error('Error restarting recognition:', e);
+            }
+          }, 1500);
+        };
+        promptAgain();
+        return;
+      }
+
       let matched = false;
       for (const c of commands) {
         const pattern = c.phrase;
@@ -747,18 +964,116 @@ export default function VoiceAssistant() {
         }
       }
     };
-    r.onerror = (ev:any) => { console.error('Speech recognition error', ev); setListening(false); say('I encountered an error listening.', 'सुनने में त्रुटि हुई।'); };
-    r.onend = () => setListening(false);
-    recognitionRef.current = r;
+    r.onstart = () => {
+      // recognition actually started — update UI and notify landing page
+      setListening(true);
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+    };
+
+    r.onerror = (ev:any) => {
+      console.error('Speech recognition error', ev);
+      setListening(false);
+      // Notify landing UI that listening stopped
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+      // If permission denied or not-allowed, instruct landing to show fallback
+      try {
+        const errName = ev?.error || (ev && ev.name) || '';
+        if (String(errName).toLowerCase().includes('not-allowed') || String(errName).toLowerCase().includes('permission')) {
+          window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback', { detail: { reason: 'permission' } }));
+          say('Microphone permission denied. Please allow microphone access in your browser and try again.', 'माइक्रोफोन की अनुमति अस्वीकृत कर दी गई है। कृपया अपने ब्राउज़र में माइक्रोफ़ोन अनुमति दें और पुनः प्रयास करें।');
+        } else {
+          // generic error
+          say('I encountered an error listening.', 'सुनने में त्रुटि हुई।');
+        }
+      } catch (e) {
+        say('I encountered an error listening.', 'सुनने में त्रुटि हुई।');
+      }
+    };
+
+    r.onend = () => {
+      setListening(false);
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+
+      // If we're on the landing page and no language is selected, try alternate recognition languages
+      if (props.greetOnMount && !voiceLang) {
+        // increment attempts and alternate between hi-IN and en-US a couple times
+        landingAttemptRef.current = (landingAttemptRef.current || 0) + 1;
+        const attempt = landingAttemptRef.current;
+        // after first attempt try english, after second try hindi again, up to 4 attempts
+        const tryLang = attempt % 2 === 1 ? 'hi-IN' : 'en-US';
+        // small delay before retrying
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current) recognitionRef.current.lang = tryLang;
+          } catch (e) {}
+          // if too many attempts, emit fallback
+          if (attempt >= 4) { window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback')); return; }
+          startListening();
+        }, 250);
+      }
+      // If we're in landing nav mode (after language selection), auto-restart recognition
+      else if (landingNavRef.current && voiceLang) {
+        // Short delay before restarting
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current) {
+              recognitionRef.current.start();
+              setListening(true);
+              window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+            }
+          } catch (e) {
+            console.error('Error auto-restarting recognition:', e);
+            if (voiceLang === 'hi') {
+              speak('माफ़ कीजिये, कुछ तकनीकी समस्या है। कृपया बटन का उपयोग करें।', 'hi');
+            } else {
+              speak('Sorry, there was a technical issue. Please use the buttons.', 'en');
+            }
+            window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+          }
+        }, 300);
+      }
+    };
+  recognitionRef.current = r;
     return () => { try { r.onresult = null; r.onerror = null; r.onend = null; } catch (e) {} };
   }, [voiceLang]);
 
-  const startListening = async () => {
-    if (!recognitionRef.current) return say('Speech recognition is not supported in this browser.', 'आपके ब्राउज़र में स्पीच रिकग्निशन समर्थित नहीं है।');
-    try { setTranscript(''); setListening(true); recognitionRef.current.start(); say('Listening', 'सुन रहा हूँ'); } catch (e:any) { console.error(e); setListening(false); say('Failed to start listening.', 'सुनना शुरू करने में विफल।'); }
+  const startListening = async (langOverride?: string) => {
+    if (!recognitionRef.current) {
+      say('Speech recognition is not supported in this browser.', 'आपके ब्राउज़र में स्पीच रिकग्निशन समर्थित नहीं है।');
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+      return;
+    }
+    try {
+      // if caller requested a specific recognition language for landing attempts, set it
+      if (langOverride) {
+        try { recognitionRef.current.lang = langOverride; } catch (e) {}
+      }
+      setTranscript('');
+      setListening(true);
+      // For landing page language selection, don't say "Listening" to avoid interrupting
+      if (voiceLang || !props.greetOnMount) {
+        say('Listening', 'सुन रहा हूँ');
+      }
+      recognitionRef.current.start();
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: true } }));
+    } catch (e:any) {
+      console.error(e);
+      setListening(false);
+      say('Failed to start listening.', 'सुनना शुरू करने में विफल।');
+      window.dispatchEvent(new CustomEvent('vitalVoice:landingFallback'));
+    }
   };
 
-  const stopListening = () => { if (!recognitionRef.current) return; try { recognitionRef.current.stop(); } catch (e) {} setListening(false); };
+  const stopListening = () => {
+    if (!recognitionRef.current) return;
+    try {
+      recognitionRef.current.stop();
+    } catch (e) {
+      console.error('Error stopping recognition:', e);
+    }
+    setListening(false);
+    window.dispatchEvent(new CustomEvent('vitalVoice:landingListening', { detail: { listening: false } }));
+  };
 
   return (
     <div className="flex items-center space-x-2 bg-card/80 backdrop-blur-sm p-1 rounded-md shadow-sm">

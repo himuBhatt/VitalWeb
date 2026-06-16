@@ -191,11 +191,6 @@ function SinglePatientCard({ patientId, onDelete, onRealtimeTemperature }: Patie
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="text-sm text-foreground">Humidity</div>
-            <div className="text-lg font-bold">{realtimeVitals?.humidity != null ? `${Number(realtimeVitals.humidity)}%` : "—"}</div>
-          </div>
-
-          <div className="flex items-center justify-between">
             <div className="text-sm text-foreground">Heart Rate</div>
             <div className="text-lg font-bold">{realtimeVitals?.hr != null ? `${Number(realtimeVitals.hr)} bpm` : "—"}</div>
           </div>

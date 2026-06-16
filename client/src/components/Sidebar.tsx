@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { BarChart3, Users, Activity, Bell, FileText, PlusCircle } from "lucide-react";
+import { BarChart3, Users, Activity, Bell, FileText, PlusCircle, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface SidebarProps {
@@ -16,6 +16,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'add-patient', label: 'Add Patient', icon: PlusCircle },
     { id: 'upload-reports', label: 'Upload Reports', icon: FileText },
     { id: 'medi', label: 'Medicines', icon: Activity },
+    { id: 'chatbot', label: 'Chatbot', icon: MessageCircle },
   ];
 
   return (
@@ -54,6 +55,10 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   // Open dashboard and select the medicines tab
                   navigate('/dashboard?tab=medi');
                   onTabChange('medi');
+                } else if (item.id === 'chatbot') {
+                  // Open dashboard and select the chatbot tab
+                  navigate('/dashboard?tab=chatbot');
+                  onTabChange('chatbot');
                 }
               }}
               data-testid={`nav-${item.id}`}

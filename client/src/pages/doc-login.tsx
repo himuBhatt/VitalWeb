@@ -56,8 +56,15 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-sm p-8 bg-white rounded-lg shadow-md">
+    <div className="relative flex items-center justify-center min-h-screen bg-gray-100 p-4 perspective-1000 overflow-hidden">
+      {/* 3D Background Elements */}
+      <div className="absolute inset-0">
+        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-200 rounded-full transform rotateX-45 rotateY-45 opacity-20 animate-pulse"></div>
+        <div className="absolute top-40 right-32 w-24 h-24 bg-green-200 rounded-full transform -rotateX-30 -rotateY-30 opacity-30 animate-bounce"></div>
+        <div className="absolute bottom-32 left-40 w-28 h-28 bg-purple-200 rounded-full transform rotateX-60 rotateY-60 opacity-25 animate-ping"></div>
+        <div className="absolute bottom-20 right-20 w-20 h-20 bg-yellow-200 rounded-full transform -rotateX-45 -rotateY-45 opacity-20 animate-pulse"></div>
+      </div>
+      <div className="relative z-10 w-full max-w-sm p-8 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
           {mode === "signup" ? "Sign Up" : "Log In"}
         </h2>

@@ -18,6 +18,7 @@ import { db, rtdb } from "@/lib/firebase";
 import { ref as rtdbRef, onValue, get } from "firebase/database";
 import { ReactNode } from "react";
 import { MedicineReminderContent } from "./medi";
+import Chatbot from "@/components/Chatbot";
 
 type StatCardProps = {
   label: string;
@@ -443,6 +444,11 @@ export default function Dashboard() {
               </div>
             </TabsContent>
             <TabsContent value="profile">{renderProfileTab()}</TabsContent>
+            <TabsContent value="chatbot">
+              <div className="flex items-center justify-center h-full">
+                <Chatbot />
+              </div>
+            </TabsContent>
           </Tabs>
         </main>
       </div>
